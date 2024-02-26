@@ -4,7 +4,7 @@ import datetime
 from art import tprint
 
 
-def welcome_message():
+def promt_welcome_message():
     tprint('R E D R   Script')
     print('Raw Exif Date Renamer Script')
     # tprint('RENAMER')
@@ -105,7 +105,7 @@ def folder_inspection(file_list_iterator) -> dict:
     return result
 
 
-def abort_renaming_prompt():
+def prompt_abort_renaming():
     print()
     print()
     print('-' * 50)
@@ -145,10 +145,10 @@ def rename_process(db_filename_exif_date: dict, answer=True):
                 break
 
     else:
-        abort_renaming_prompt()
+        prompt_abort_renaming()
 
 
-def warning_prompt():
+def prompt_warning_before_rename():
     print()
     print()
     print('-' * 50)
@@ -156,14 +156,14 @@ def warning_prompt():
     print('You wish to continue and rename all files?')
 
 
-def end_program_prompt():
+def prompt_enf_of_program():
     print()
     print()
     print('-' * 50)
     print('||| PROGRAM END |||')
 
 
-def no_arw_files_prompt():
+def prompt_no_arw_files():
     print()
     print()
     print('-' * 50)
@@ -188,7 +188,7 @@ def check_integrity(db_dict: dict):
     return answer
 
 
-def integrity_failed_prompt():
+def prompt_integrity_failed():
     print()
     print()
     print('-' * 50)
@@ -204,24 +204,33 @@ def main():
     if db_filename_exif_date:
 
         if check_integrity(db_filename_exif_date):
-            integrity_failed_prompt()
+            prompt_integrity_failed()
         else:
             print_out_detected_files(db_filename_exif_date)
-            warning_prompt()
+            prompt_warning_before_rename()
             rename_process(db_filename_exif_date, True if str(input()) == 'y' else False)
 
     else:
-        no_arw_files_prompt()
+        prompt_no_arw_files()
 
-    end_program_prompt()
+    prompt_enf_of_program()
 
 
 if __name__ == "__main__":
-    welcome_message()
+    promt_welcome_message()
     main()
 
 # todo
 # add .jpg filtering and renaming
 
 # todo
+# rework integrity check - make as filtering function, which gives None or filtered dict
+
+# todo
 # add correct integrity check - with filtering only files approved for renaming
+
+# todo
+# add progress bar while reading all files and making integrity check
+
+# todo
+# add progress bar while renaming process
