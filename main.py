@@ -23,10 +23,9 @@ def welcome_message():
     print('')
     print('/')
     print('| Current directory:')
-    print('| ',os.getcwd())
+    print('| ', os.getcwd())
     print('\\')
     print()
-
 
 
 def tags_error_handler(dates_list: list, file_name: str) -> datetime:
@@ -163,11 +162,34 @@ def end_program_prompt():
     print('-' * 50)
     print('||| PROGRAM END |||')
 
+
 def no_arw_files_prompt():
     print()
     print()
     print('-' * 50)
     print('||| NO ARW FILES IN DIRECTORY |||')
+
+
+def check_integrity(db_dict: dict):
+    answer = True
+
+    for k, v in db_dict.items():
+        file_name_struct = list(map(int, [k[:4], k[5:7], k[8:10], k[11:13], k[14:16], k[17:19]]))
+        time_stamp_struct = [v.year, v.month, v.day, v.hour, v.minute, v.second]
+        if file_name_struct == time_stamp_struct:
+            pass
+        else:
+            answer = False
+            break
+
+    return answer
+
+
+def integrity_failed_prompt():
+    print()
+    print()
+    print('-' * 50)
+    print('||| ALL FILES ARE MODIFIED |||')
 
 
 def main():
@@ -178,9 +200,13 @@ def main():
 
     if db_filename_exif_date:
 
-        print_out_detected_files(db_filename_exif_date)
-        warning_prompt()
-        rename_process(db_filename_exif_date, True if str(input()) == 'y' else False)
+        if check_integrity(db_filename_exif_date):
+            integrity_failed_prompt()
+
+        else:
+            print_out_detected_files(db_filename_exif_date)
+            warning_prompt()
+            rename_process(db_filename_exif_date, True if str(input()) == 'y' else False)
 
     else:
         no_arw_files_prompt()
@@ -191,12 +217,3 @@ def main():
 if __name__ == "__main__":
     welcome_message()
     main()
-
-
-    #todo
-    #check if all files already have good names and don't need to be renamed
-
-    #todo
-    #resolve FileExisitngError while renaming files (with the same time stamp, ho-ho-ho)
-
-
