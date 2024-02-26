@@ -174,7 +174,10 @@ def check_integrity(db_dict: dict):
     answer = True
 
     for k, v in db_dict.items():
-        file_name_struct = list(map(int, [k[:4], k[5:7], k[8:10], k[11:13], k[14:16], k[17:19]]))
+        try:
+            file_name_struct = list(map(int, [k[:4], k[5:7], k[8:10], k[11:13], k[14:16], k[17:19]]))
+        except:
+            file_name_struct = [0, 0, 0, 0, 0, 0]
         time_stamp_struct = [v.year, v.month, v.day, v.hour, v.minute, v.second]
         if file_name_struct == time_stamp_struct:
             pass
@@ -194,7 +197,7 @@ def integrity_failed_prompt():
 
 def main():
     # get all files with .arw extention
-    file_list = filter(lambda x: x[-4:].lower() == '.arw', os.listdir())
+    file_list = filter(lambda x: x[-4:].lower() == '.arw' or '.jpg', os.listdir())
 
     db_filename_exif_date = folder_inspection(file_list)
 
@@ -202,7 +205,6 @@ def main():
 
         if check_integrity(db_filename_exif_date):
             integrity_failed_prompt()
-
         else:
             print_out_detected_files(db_filename_exif_date)
             warning_prompt()
