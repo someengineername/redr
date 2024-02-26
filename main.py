@@ -197,7 +197,7 @@ def integrity_failed_prompt():
 
 def main():
     # get all files with .arw extention
-    file_list = filter(lambda x: x[-4:].lower() == '.arw' or '.jpg', os.listdir())
+    file_list = filter(lambda x: x[-4:].lower() == '.arw' or x[-4:].lower() == '.jpg', os.listdir())
 
     db_filename_exif_date = folder_inspection(file_list)
 
