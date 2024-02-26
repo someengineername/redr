@@ -197,7 +197,7 @@ def integrity_failed_prompt():
 
 def main():
     # get all files with .arw extention
-    file_list = filter(lambda x: x[-4:].lower() == '.arw' or x[-4:].lower() == '.jpg', os.listdir())
+    file_list = filter(lambda x: x[-4:].lower() == '.arw', os.listdir())
 
     db_filename_exif_date = folder_inspection(file_list)
 
@@ -219,3 +219,9 @@ def main():
 if __name__ == "__main__":
     welcome_message()
     main()
+
+# todo
+# add .jpg filtering and renaming
+
+# todo
+# add correct integrity check - with filtering only files approved for renaming
