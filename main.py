@@ -1,6 +1,10 @@
+import sys
+
 import exifreader
 import os
 import datetime
+import re
+from tqdm import tqdm
 from art import tprint
 
 
@@ -105,20 +109,6 @@ def folder_inspection(file_list_iterator) -> dict:
     return result
 
 
-# def prompt_abort_renaming():
-#     print()
-#     print()
-#     print('-' * 50)
-#     print('||| ABORT RENAMING PROCESS |||')
-
-
-# def is_suffix_applied(filename: str):
-#     if filename[-5] == ')':
-#         return True
-#     else:
-#         return False
-
-
 def rename_process(db_filename_exif_date: dict, answer=True):
     # abort renaming process based on input
     if answer:
@@ -148,28 +138,6 @@ def rename_process(db_filename_exif_date: dict, answer=True):
         prompt_message('ABORT RENAMING PROCESS')
 
 
-# def prompt_warning_before_rename():
-#     print()
-#     print()
-#     print('-' * 50)
-#     print('Files inspected and dates from EXIF extracted succsesfull')
-#     print('You wish to continue and rename all files?')
-
-
-# def prompt_enf_of_program():
-#     print()
-#     print()
-#     print('-' * 50)
-#     print('||| PROGRAM END |||')
-
-
-# def prompt_no_arw_files():
-#     print()
-#     print()
-#     print('-' * 50)
-#     print('||| NO ARW FILES IN DIRECTORY |||')
-
-
 def check_integrity(db_dict: dict):
     answer = True
 
@@ -188,14 +156,8 @@ def check_integrity(db_dict: dict):
     return answer
 
 
-# def prompt_integrity_failed():
-#     print()
-#     print()
-#     print('-' * 50)
-#     print('||| ALL FILES ARE MODIFIED |||')
-
 def prompt_message(message: str, additional_message=None, type='basic'):
-    db_symbols = {'basic': '⚪', 'alert': '🔴', 'warning': '🟡', 'success': '🟢'}
+    db_symbols = {'basic': '⚪', 'red': '🔴', 'yellow': '🟡', 'green': '🟢'}
 
     print('-' * 50)
     print(db_symbols[type] * 3, message, db_symbols[type] * 3)
@@ -205,7 +167,7 @@ def prompt_message(message: str, additional_message=None, type='basic'):
     return None
 
 
-def change_wroking_doirectoty_routine():
+def change_working_directory_routine():
     while True:
         prompt_message('Please, input working directory:')
         working_directoty = str(input())
@@ -213,17 +175,36 @@ def change_wroking_doirectoty_routine():
             os.chdir(working_directoty)
             break
         except:
-            prompt_message('Something went wrong', type='alert')
-            prompt_message('Please, try again:', type='warning')
+            prompt_message('Something went wrong', type='red')
+            prompt_message('Please, try again:', type='yello')
 
-    prompt_message('Work directory updated. New directory:', type='success')
-    prompt_message(str(os.getcwd()))
+    prompt_message('Work directory updated. New directory:',str(os.getcwd()), type='green')
+    # prompt_message(str(os.getcwd()))
 
 
 def main():
     # update / change working directory
 
-    change_wroking_doirectoty_routine()
+    change_working_directory_routine()
+
+    db_files_for_renaming = directory_inspection_routine()
+
+    if db_files_for_renaming:
+        prompt_message('List successfully created', type='green')
+        # ask for print-out
+
+        # ask for confirmation
+
+        #do the renaming
+
+    else:
+        prompt_message('No files detected', type='green')
+
+
+
+    prompt_message('End of program', type='green')
+
+    raise Exception
 
     # get all files with .arw extention
     file_list = filter(lambda x: x[-4:].lower() == '.arw', os.listdir())
@@ -233,17 +214,76 @@ def main():
     if db_filename_exif_date:
 
         if check_integrity(db_filename_exif_date):
-            prompt_message('ALL FILES ARE MODIFIED SUCCSESFULLY', type='success')
+            prompt_message('ALL FILES ARE MODIFIED SUCCSESFULLY', type='green')
         else:
             print_out_detected_files(db_filename_exif_date)
             prompt_message('Files inspected and dates from EXIF extracted succsesfull',
-                           'You wish to continue and rename all files?', type='warning')
+                           'You wish to continue and rename all files?', type='yellow')
             rename_process(db_filename_exif_date, True if str(input()) == 'y' else False)
 
     else:
-        prompt_message('NO ARW FILES IN DIRECTORY', type='alert')
+        prompt_message('NO ARW FILES IN DIRECTORY', type='red')
 
-    prompt_message('PROGRAM END', type='success')
+    prompt_message('PROGRAM END', type='green')
+
+
+def directory_inspection_routine() -> dict[str, str]:
+    """
+    Function (routine) look's-up through current working directory and searches ARW and JPG files, which are not named in accordance with pattern (YYYY_MM_DD_HH_MM_SS.EXT). Based on user's input - JPG files may or may not be included into further processing list. As return gives dict{file_name: exif_date}. If no applicable files are found - returns None.
+    :return:
+    """
+
+    result = dict()
+
+    prompt_message('Cheking-in files...', type='yellow')
+
+    list_arw_files = []
+    list_jpg_files = []
+
+    # get ALL files
+    # filter only non 'YYYY_MM_DD_HH_MM_SS' files names (exclude files already renamed)
+    with os.scandir(os.getcwd()) as it:
+        for pos in tqdm(it):
+            if not pos.name.startswith('.') and pos.is_file():
+                # get file name
+                file_name = pos.name
+
+                # RE application to check pattern
+                pattern = re.compile(r'\d{4}_\d{2}_\d{2}_\d{2}_\d{2}')
+                checker_func = lambda x: True if pattern.match(x) else False
+
+                # if file extention ARW and without pattern - place in distinct list
+                if file_name.lower().endswith('.arw') and not checker_func(file_name):
+                    list_arw_files.append(pos)
+                # if file extention JPG and without pattern - place in distinct list
+                elif file_name.lower().endswith('.jpg') and not checker_func(file_name):
+                    list_jpg_files.append(pos)
+
+    # sequnce to merge or ignore JPG-files into final list
+    if len(list_jpg_files) > 0:
+        prompt_message('JPG files detected',type='red')
+        prompt_message('Do you wish to include JPG files into renaming process? Y / N','JPG files may not include correct EXIF data.\n(based on export settings in Lightroom)', type='yellow')
+        # prompt_message(,'')
+        # prompt_message()
+        if input() == 'y':
+            list_all_files = list_jpg_files + list_arw_files
+        else:
+            list_all_files = list_arw_files
+    else:
+        list_all_files = list_arw_files
+
+
+    # just make a plug with empty EXIF data - fill it later on
+    # for now - to check further algo
+    temp_dict = {k.name : 'DATA' for k in list_all_files}
+
+
+    if len(list_all_files) == 0:
+        # prompt_message('No applicable files are detected', type='yellow')
+        return None
+    else:
+        prompt_message('Total count:',str(len(list_all_files)) + ' files')
+        return temp_dict
 
 
 if __name__ == "__main__":
@@ -252,15 +292,6 @@ if __name__ == "__main__":
 
 # todo
 # add .jpg filtering and renaming
-
-# todo
-# rework integrity check - make as filtering function, which gives None or filtered dict
-
-# todo
-# add correct integrity check - with filtering only files approved for renaming
-
-# todo
-# add progress bar while reading all files and making integrity check
 
 # todo
 # add progress bar while renaming process
