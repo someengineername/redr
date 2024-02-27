@@ -105,18 +105,18 @@ def folder_inspection(file_list_iterator) -> dict:
     return result
 
 
-def prompt_abort_renaming():
-    print()
-    print()
-    print('-' * 50)
-    print('||| ABORT RENAMING PROCESS |||')
+# def prompt_abort_renaming():
+#     print()
+#     print()
+#     print('-' * 50)
+#     print('||| ABORT RENAMING PROCESS |||')
 
 
-def is_suffix_applied(filename: str):
-    if filename[-5] == ')':
-        return True
-    else:
-        return False
+# def is_suffix_applied(filename: str):
+#     if filename[-5] == ')':
+#         return True
+#     else:
+#         return False
 
 
 def rename_process(db_filename_exif_date: dict, answer=True):
@@ -145,29 +145,29 @@ def rename_process(db_filename_exif_date: dict, answer=True):
                 break
 
     else:
-        prompt_abort_renaming()
+        prompt_message('ABORT RENAMING PROCESS')
 
 
-def prompt_warning_before_rename():
-    print()
-    print()
-    print('-' * 50)
-    print('Files inspected and dates from EXIF extracted succsesfull')
-    print('You wish to continue and rename all files?')
+# def prompt_warning_before_rename():
+#     print()
+#     print()
+#     print('-' * 50)
+#     print('Files inspected and dates from EXIF extracted succsesfull')
+#     print('You wish to continue and rename all files?')
 
 
-def prompt_enf_of_program():
-    print()
-    print()
-    print('-' * 50)
-    print('||| PROGRAM END |||')
+# def prompt_enf_of_program():
+#     print()
+#     print()
+#     print('-' * 50)
+#     print('||| PROGRAM END |||')
 
 
-def prompt_no_arw_files():
-    print()
-    print()
-    print('-' * 50)
-    print('||| NO ARW FILES IN DIRECTORY |||')
+# def prompt_no_arw_files():
+#     print()
+#     print()
+#     print('-' * 50)
+#     print('||| NO ARW FILES IN DIRECTORY |||')
 
 
 def check_integrity(db_dict: dict):
@@ -188,14 +188,43 @@ def check_integrity(db_dict: dict):
     return answer
 
 
-def prompt_integrity_failed():
-    print()
-    print()
+# def prompt_integrity_failed():
+#     print()
+#     print()
+#     print('-' * 50)
+#     print('||| ALL FILES ARE MODIFIED |||')
+
+def prompt_message(message: str, additional_message=None, type='basic'):
+    db_symbols = {'basic': '⚪', 'alert': '🔴', 'warning': '🟡', 'success': '🟢'}
+
     print('-' * 50)
-    print('||| ALL FILES ARE MODIFIED |||')
+    print(db_symbols[type] * 3, message, db_symbols[type] * 3)
+    if additional_message:
+        print(db_symbols['basic'], additional_message, db_symbols['basic'])
+    print('-' * 50)
+    return None
+
+
+def change_wroking_doirectoty_routine():
+    while True:
+        prompt_message('Please, input working directory:')
+        working_directoty = str(input())
+        try:
+            os.chdir(working_directoty)
+            break
+        except:
+            prompt_message('Something went wrong', type='alert')
+            prompt_message('Please, try again:', type='warning')
+
+    prompt_message('Work directory updated. New directory:', type='success')
+    prompt_message(str(os.getcwd()))
 
 
 def main():
+    # update / change working directory
+
+    change_wroking_doirectoty_routine()
+
     # get all files with .arw extention
     file_list = filter(lambda x: x[-4:].lower() == '.arw', os.listdir())
 
@@ -204,16 +233,17 @@ def main():
     if db_filename_exif_date:
 
         if check_integrity(db_filename_exif_date):
-            prompt_integrity_failed()
+            prompt_message('ALL FILES ARE MODIFIED SUCCSESFULLY', type='success')
         else:
             print_out_detected_files(db_filename_exif_date)
-            prompt_warning_before_rename()
+            prompt_message('Files inspected and dates from EXIF extracted succsesfull',
+                           'You wish to continue and rename all files?', type='warning')
             rename_process(db_filename_exif_date, True if str(input()) == 'y' else False)
 
     else:
-        prompt_no_arw_files()
+        prompt_message('NO ARW FILES IN DIRECTORY', type='alert')
 
-    prompt_enf_of_program()
+    prompt_message('PROGRAM END', type='success')
 
 
 if __name__ == "__main__":
