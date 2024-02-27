@@ -195,7 +195,7 @@ def renaming_rouitne(dict_filename_and_exif_date: dict):
 
 def scramble_routine():
     with os.scandir(os.getcwd()) as it:
-        for pos in it:
+        for pos in tqdm(it):
             if not pos.name.startswith('.') and pos.is_file():
                 new_name = ''.join([str(random.randint(0, 9)) for _ in range(15)]) + pos.name[-4:]
                 os.rename(pos.name, new_name)
