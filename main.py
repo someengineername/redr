@@ -2,6 +2,7 @@ import exifreader
 import os
 import datetime
 import re
+import random
 from tqdm import tqdm
 from art import tprint
 
@@ -71,7 +72,7 @@ def date_input_routine() -> datetime.datetime:
     while True:
         answer = input()
 
-        if is_pattern_complied(answer, re.compile(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}')):
+        if is_pattern_complied(answer, re.compile(r'\d{4}-\d{1,2}-\d{1,2} \d{1,2}:\d{1,2}:\d{1,2}')):
             prompt_message('Date applied')
             break
         else:
@@ -107,7 +108,7 @@ def directory_inspection_routine() -> dict[str, str]:
                 file_name = pos.name
 
                 # REGEX application to check pattern
-                pattern = re.compile(r'\d{4}_\d{2}_\d{2}_\d{2}_\d{2}')
+                pattern = re.compile(r'\d{4}_\d{1,2}_\d{1,2}_\d{1,2}_\d{1,2}')
 
                 # if file extention ARW and without pattern - place in distinct list
                 if file_name.lower().endswith('.arw') and not is_pattern_complied(file_name, pattern):
@@ -135,10 +136,6 @@ def directory_inspection_routine() -> dict[str, str]:
     # if files presented - generate dict with EXIF dates connected via dict
     else:
         for filename in tqdm(list_all_files, colour='MAGENTA'):
-
-            # TODO
-            # remove 99999(9) after finishing the algorytm!
-            # extracted_date_from_exif = datetime.datetime(year=2000, month=12, day=31, hour=12, minute=00)
 
             with open(filename.name, 'rb') as photo_file:
                 # TODO
@@ -175,27 +172,52 @@ def directory_inspection_routine() -> dict[str, str]:
     return result
 
 
+def renaming_recursive_function(filename, old_name, new_name, counter=0):
+    counter += 1
+    try:
+        os.rename(old_name, new_name)
+    except OSError:
+        modified_name = ''
+        if counter == 1:
+            modified_name = new_name[:-4] + '-' + '(' + str(counter) + ')' + filename[-4:]
+        elif counter > 1:
+            modified_name = new_name[:-8] + '-' + '(' + str(counter) + ')' + filename[-4:]
+        renaming_recursive_function(filename, old_name, modified_name, counter)
+
+
 def renaming_rouitne(dict_filename_and_exif_date: dict):
-    # go by dict and try to rename file
-    for filename, exif_date in dict_filename_and_exif_date.items():
+    for filename, exif_date in tqdm(dict_filename_and_exif_date.items()):
         old_name = filename
-        new_name = str(str(exif_date.year) + '_' +
-                       str(exif_date.month) + '_' +
-                       str(exif_date.day) + '_' +
-                       str(exif_date.hour) + '_' +
-                       str(exif_date.minute) + '_' +
-                       str(exif_date.second)) + old_name[-4:]
+        new_name = datetime.datetime.strftime(exif_date, '%Y_%m_%d_%H_%M_%S') + old_name[-4:]
 
-        try:
-            os.rename(old_name,new_name)
-        except:
-            print(str(filename + ' error'))
+        renaming_recursive_function(filename, old_name, new_name)
 
+
+def scramble_routine():
+    with os.scandir(os.getcwd()) as it:
+        for pos in it:
+            if not pos.name.startswith('.') and pos.is_file():
+                new_name = ''.join([str(random.randint(0, 9)) for _ in range(15)]) + pos.name[-4:]
+                os.rename(pos.name, new_name)
+        print()
+
+
+def scramble_routine_entry_point():
+    prompt_message('???ARE YOU SURE???', type_color='red')
+    prompt_message('!!!FAILURE CAN BE!!!', type_color='red')
+
+    if input() == 'y':
+        scramble_routine()
+    else:
+        prompt_message('scramlbe cancelled', type_color='green')
 
 
 def main():
     # update / change working directory
     change_working_directory_routine()
+
+    # QUITE DANGEROUS!
+    scramble_routine_entry_point()
 
     # extract names of files applicable for renaming process (more on that in directory_inspection_routine docs)
     dict_filename_and_exif_date = directory_inspection_routine()
