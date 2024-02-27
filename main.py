@@ -137,25 +137,6 @@ def rename_process(db_filename_exif_date: dict, answer=True):
     else:
         prompt_message('ABORT RENAMING PROCESS')
 
-
-def check_integrity(db_dict: dict):
-    answer = True
-
-    for k, v in db_dict.items():
-        try:
-            file_name_struct = list(map(int, [k[:4], k[5:7], k[8:10], k[11:13], k[14:16], k[17:19]]))
-        except:
-            file_name_struct = [0, 0, 0, 0, 0, 0]
-        time_stamp_struct = [v.year, v.month, v.day, v.hour, v.minute, v.second]
-        if file_name_struct == time_stamp_struct:
-            pass
-        else:
-            answer = False
-            break
-
-    return answer
-
-
 def prompt_message(message: str, additional_message=None, type='basic'):
     db_symbols = {'basic': '⚪', 'red': '🔴', 'yellow': '🟡', 'green': '🟢'}
 
@@ -184,26 +165,41 @@ def change_working_directory_routine():
 
 def main():
     # update / change working directory
-
     change_working_directory_routine()
 
+    # extract names of files applicable for renaming process (more on that in directory_inspection_routine docs)
     db_files_for_renaming = directory_inspection_routine()
 
+    # if applicable files list generated - go for listing and confirmation
     if db_files_for_renaming:
-        prompt_message('List successfully created', type='green')
-        # ask for print-out
+        prompt_message('List successfully created',str('Files count:' + str(len(db_files_for_renaming))), type='green')
+        prompt_message('Would you like to see list of files?')
+        if input() == 'y':
+            print_out_detected_files(db_files_for_renaming)
+        else:
+            pass
 
         # ask for confirmation
-
-        #do the renaming
-
+        prompt_message("Base actions applied and we're ready to go")
+        prompt_message('Do you confirm the start of renaming process?', type='red')
+        if input() == 'y':
+            # do the renaming
+            pass
+        else:
+            prompt_message('Renaming process cancelled', type='yellow')
+    # if applicable files are not found - finish the program
     else:
         prompt_message('No files detected', type='green')
 
-
-
     prompt_message('End of program', type='green')
 
+
+
+    # PLACEHOLDER STOP
+    # PLACEHOLDER STOP
+    # PLACEHOLDER STOP - REMOVE AFTER FINISHING THE ALGORYTHM
+    # PLACEHOLDER STOP - DOWN BELOW: OLD ALGORYTHM
+    # PLACEHOLDER STOP
     raise Exception
 
     # get all files with .arw extention
@@ -243,7 +239,7 @@ def directory_inspection_routine() -> dict[str, str]:
     # get ALL files
     # filter only non 'YYYY_MM_DD_HH_MM_SS' files names (exclude files already renamed)
     with os.scandir(os.getcwd()) as it:
-        for pos in tqdm(it):
+        for pos in it:
             if not pos.name.startswith('.') and pos.is_file():
                 # get file name
                 file_name = pos.name
@@ -259,12 +255,10 @@ def directory_inspection_routine() -> dict[str, str]:
                 elif file_name.lower().endswith('.jpg') and not checker_func(file_name):
                     list_jpg_files.append(pos)
 
-    # sequnce to merge or ignore JPG-files into final list
+    # sequnce to merge or ignore JPG-files into final list based on user input
     if len(list_jpg_files) > 0:
         prompt_message('JPG files detected',type='red')
         prompt_message('Do you wish to include JPG files into renaming process? Y / N','JPG files may not include correct EXIF data.\n(based on export settings in Lightroom)', type='yellow')
-        # prompt_message(,'')
-        # prompt_message()
         if input() == 'y':
             list_all_files = list_jpg_files + list_arw_files
         else:
@@ -272,18 +266,35 @@ def directory_inspection_routine() -> dict[str, str]:
     else:
         list_all_files = list_arw_files
 
+    # Walk through the list of files and extract EXIF dates.
+    for filename in tqdm(list_all_files,colour='MAGENTA'):
 
-    # just make a plug with empty EXIF data - fill it later on
-    # for now - to check further algo
-    temp_dict = {k.name : 'DATA' for k in list_all_files}
+        # todo
+        # remove 99999(9) after finishoing algorytm!
+        extracted_date_from_exif = '9999_99_99_99_99_99'
+
+        with open(filename.name, 'rb') as photo_file:
+            # extracting EXIF tags
+            exif_tags_extracted = {k: v for k, v in exifreader.process_file(photo_file).items() if k in ['Image DateTime', 'Thumbnail DateTime', 'EXIF DateTimeOriginal', 'EXIF DateTimeDigitized'] }
+
+            # check if tags even presented:
+
+            if exif_tags_extracted:
+                # for key in exif_tags_extracted.keys():
+                #     print(key, exif_tags_extracted[key])
+                # do rest of check
+                pass
+            # no tags presented, need to enter the date!!!
+            else:
+                prompt_message('No tags presented for file', str(file_name), type='red')
+
+        result[filename.name] = result.setdefault(filename.name,extracted_date_from_exif)
 
 
     if len(list_all_files) == 0:
-        # prompt_message('No applicable files are detected', type='yellow')
         return None
     else:
-        prompt_message('Total count:',str(len(list_all_files)) + ' files')
-        return temp_dict
+        return result
 
 
 if __name__ == "__main__":
@@ -291,7 +302,5 @@ if __name__ == "__main__":
     main()
 
 # todo
-# add .jpg filtering and renaming
-
-# todo
-# add progress bar while renaming process
+# renaming routine
+# with sequntial algorythm the same timestamp
