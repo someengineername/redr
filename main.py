@@ -22,6 +22,7 @@ def promt_welcome_message():
         '|    YYYY-MM-DD-HH-MM-1,YYYY-MM-DD-HH-MM-2 and so on')
     print('\\')
 
+
 def print_out_detected_files(db_filenames_dates: dict):
     print(str('-' * 30 + ' ' + '-' * 30))
     print(str('File name:'.ljust(30) + ' ' + 'EXIF date:'))
@@ -31,11 +32,11 @@ def print_out_detected_files(db_filenames_dates: dict):
     return None
 
 
-def prompt_message(message: str, additional_message=None, type='basic'):
+def prompt_message(message: str, additional_message=None, type_color='basic'):
     db_symbols = {'basic': '⚪', 'red': '🔴', 'yellow': '🟡', 'green': '🟢'}
 
     print('-' * 50)
-    print(db_symbols[type] * 3, message, db_symbols[type] * 3)
+    print(db_symbols[type_color] * 3, message, db_symbols[type_color] * 3)
     if additional_message:
         print(db_symbols['basic'], additional_message, db_symbols['basic'])
     print('-' * 50)
@@ -49,40 +50,50 @@ def change_working_directory_routine():
         try:
             os.chdir(working_directoty)
             break
-        except:
-            prompt_message('Something went wrong', type='red')
-            prompt_message('Please, try again:', type='yello')
+        except OSError:
+            prompt_message('Wrong directory input', type_color='red')
+            prompt_message('Please, try again:', type_color='yellow')
 
-    prompt_message('Work directory updated. New directory:', str(os.getcwd()), type='green')
+    prompt_message('Work directory updated. New directory:', str(os.getcwd()), type_color='green')
     # prompt_message(str(os.getcwd()))
 
 
-def date_input_routine():
-    prompt_message('Please enter valied date:', type='yellow')
+def is_pattern_complied(string, pattern):
+    if pattern.match(string):
+        return True
+    else:
+        return False
+
+
+def date_input_routine() -> datetime.datetime:
+    prompt_message('Please enter valied date:', type_color='yellow')
 
     while True:
         answer = input()
-        pattern = re.compile(r'\d{4}_\d{2}_\d{2}_\d{2}_\d{2}')
-        checker_func = lambda x: True if pattern.match(x) else False
 
-        if checker_func(answer):
+        if is_pattern_complied(answer, re.compile(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}')):
             prompt_message('Date applied')
             break
         else:
-            prompt_message('Invalid input. Try again', type='yellow')
+            prompt_message('Invalid input. Try again', type_color='yellow')
 
-    return answer
+    return datetime.datetime.strptime(answer, '%Y:%m:%d %H:%M:%S')
 
 
 def directory_inspection_routine() -> dict[str, str]:
     """
-    Function (routine) look's-up through current working directory and searches ARW and JPG files, which are not named in accordance with pattern (YYYY_MM_DD_HH_MM_SS.EXT). Based on user's input - JPG files may or may not be included into further processing list. As return gives dict{file_name: exif_date}. If no applicable files are found - returns None.
+    Function (routine) look's-up through current working
+    directory and searches ARW and JPG files, which are
+    not named in accordance with pattern (YYYY_MM_DD_HH_MM_SS.EXT).
+    Based on user's input - JPG files may or may not be included
+    into further processing list. As return gives dict{file_name: exif_date}.
+    If no applicable files are found - returns None.
     :return:
     """
 
     result = dict()
 
-    prompt_message('Cheking-in files...', type='yellow')
+    prompt_message('Cheking-in files...', type_color='yellow')
 
     list_arw_files = []
     list_jpg_files = []
@@ -95,23 +106,22 @@ def directory_inspection_routine() -> dict[str, str]:
                 # get file name
                 file_name = pos.name
 
-                # RE application to check pattern
+                # REGEX application to check pattern
                 pattern = re.compile(r'\d{4}_\d{2}_\d{2}_\d{2}_\d{2}')
-                checker_func = lambda x: True if pattern.match(x) else False
 
                 # if file extention ARW and without pattern - place in distinct list
-                if file_name.lower().endswith('.arw') and not checker_func(file_name):
+                if file_name.lower().endswith('.arw') and not is_pattern_complied(file_name, pattern):
                     list_arw_files.append(pos)
                 # if file extention JPG and without pattern - place in distinct list
-                elif file_name.lower().endswith('.jpg') and not checker_func(file_name):
+                elif file_name.lower().endswith('.jpg') and not is_pattern_complied(file_name, pattern):
                     list_jpg_files.append(pos)
 
     # sequnce to merge or ignore JPG-files into final list based on user input
     if len(list_jpg_files) > 0:
-        prompt_message('JPG files detected', type='red')
+        prompt_message('JPG files detected', type_color='red')
         prompt_message('Do you wish to include JPG files into renaming process? Y / N',
                        'JPG files may not include correct EXIF data.\n(based on export settings in Lightroom)',
-                       type='yellow')
+                       type_color='yellow')
         if input() == 'y':
             list_all_files = list_jpg_files + list_arw_files
         else:
@@ -128,7 +138,7 @@ def directory_inspection_routine() -> dict[str, str]:
 
             # TODO
             # remove 99999(9) after finishing the algorytm!
-            extracted_date_from_exif = '9999_99_99_99_99_99'
+            # extracted_date_from_exif = datetime.datetime(year=2000, month=12, day=31, hour=12, minute=00)
 
             with open(filename.name, 'rb') as photo_file:
                 # TODO
@@ -145,7 +155,9 @@ def directory_inspection_routine() -> dict[str, str]:
 
                     # if all dates are equal - pick first one
                     if all(map(lambda x: x, list_of_all_dates)):
-                        extracted_date_from_exif = list_of_all_dates[0]
+                        # extracted_date_from_exif = str(list_of_all_dates[0])
+                        extracted_date_from_exif = datetime.datetime.strptime(str(list_of_all_dates[0]),
+                                                                              '%Y:%m:%d %H:%M:%S')
                     # if dates not equal or not even presented
                     else:
                         for enum, position in enumerate(list_of_all_dates):
@@ -154,7 +166,7 @@ def directory_inspection_routine() -> dict[str, str]:
 
                 # no tags presented, need to enter the date!!!
                 else:
-                    prompt_message('No tags presented for file', str(file_name), type='red')
+                    prompt_message('No tags presented for file', str(file_name), type_color='red')
                     extracted_date_from_exif = date_input_routine()
 
             # fill-up dictionary by EXTRACTED_DATE_FROM_EXIF value (no matter how we get this number)
@@ -163,36 +175,56 @@ def directory_inspection_routine() -> dict[str, str]:
     return result
 
 
+def renaming_rouitne(dict_filename_and_exif_date: dict):
+    # go by dict and try to rename file
+    for filename, exif_date in dict_filename_and_exif_date.items():
+        old_name = filename
+        new_name = str(str(exif_date.year) + '_' +
+                       str(exif_date.month) + '_' +
+                       str(exif_date.day) + '_' +
+                       str(exif_date.hour) + '_' +
+                       str(exif_date.minute) + '_' +
+                       str(exif_date.second)) + old_name[-4:]
+
+        try:
+            os.rename(old_name,new_name)
+        except:
+            print(str(filename + ' error'))
+
+
+
 def main():
     # update / change working directory
     change_working_directory_routine()
 
     # extract names of files applicable for renaming process (more on that in directory_inspection_routine docs)
-    db_files_for_renaming = directory_inspection_routine()
+    dict_filename_and_exif_date = directory_inspection_routine()
 
     # if applicable files list generated (non-zero lenght) - go for listing and confirmation
-    if db_files_for_renaming:
-        prompt_message('List successfully created', str('Files count:' + str(len(db_files_for_renaming))), type='green')
+    if dict_filename_and_exif_date:
+        prompt_message('List successfully created', str('Files count:' + str(len(dict_filename_and_exif_date))),
+                       type_color='green')
         prompt_message('Would you like to see list of files?')
         if input() == 'y':
-            print_out_detected_files(db_files_for_renaming)
+            print_out_detected_files(dict_filename_and_exif_date)
         else:
             pass
 
         # ask for confirmation
         prompt_message("Base actions applied and we're ready to go")
-        prompt_message('Do you confirm the start of renaming process?', type='red')
+        prompt_message('Do you confirm the start of renaming process?', type_color='red')
+
+        # if confirmation recived - go to renaming procee
         if input() == 'y':
-            # TODO
-            # renaming routine
-            pass
+            renaming_rouitne(dict_filename_and_exif_date)
+        # if confirmation not recived - abort process, finish the programm
         else:
-            prompt_message('Renaming process cancelled', type='yellow')
+            prompt_message('Renaming process cancelled', type_color='yellow')
     # if applicable files are not found - finish the program
     else:
-        prompt_message('No files detected', type='green')
+        prompt_message('No files detected', type_color='green')
 
-    prompt_message('End of program', type='green')
+    prompt_message('End of program', type_color='green')
 
 
 if __name__ == "__main__":
