@@ -23,8 +23,8 @@ def prompt_welcome_message():
     print('| Name pattern will be applied as:')
     print('|    YYYY-MM-DD-HH-MM   ')
     print(
-        '| If multiple photos of the same date (in-EXIF) will be detected:\n'
-        '|    YYYY-MM-DD-HH-MM-1,YYYY-MM-DD-HH-MM-2 and so on')
+        '| If multiple photos of the same date and time (in-EXIF) will be detected:\n'
+        '|    YYYY-MM-DD-HH-MM-(1),YYYY-MM-DD-HH-MM-(2) and so on')
     print('\\')
 
 
@@ -41,25 +41,25 @@ def print_out_detected_files(db_filenames_dates: dict):
         print(k.ljust(30), ' ', v)
 
 
-def prompt_message(message: str, additional_message: str = None, type_color='basic'):
+def prompt_message(message: str, additional_message: str = None, type_color='white'):
     """
     Unified function to deal with different styles of messages.
     Have 2 line of text with 1 semaphore-style lights on the head of the message.
     Bottom line of a message will always be with white lights,
     :param message: type == str. 1st line of a message. Will be covered by color lights on sides.
     :param additional_message: type == str. 2nd line of a message. Will be covered by white light always.
-    :param type_color: type == str. Allowed input: ('red': '🔴', 'yellow': '🟡', 'green': '🟢').
+    :param type_color: type == str. Allowed input: ('red', 'yellow', 'green').
     If not specified - white color.
     :return: None
     """
-    db_symbols = {'basic': '⚪', 'red': '🔴', 'yellow': '🟡', 'green': '🟢'}
+    db_symbols = {'white': '⚪', 'red': '🔴', 'yellow': '🟡', 'green': '🟢'}
 
     picked_colour = db_symbols.get(type_color, 'basic')
 
     print('-' * 50)
     print(picked_colour * 3, message, picked_colour * 3)
     if additional_message:
-        print(db_symbols['basic'], additional_message, db_symbols['basic'])
+        print(db_symbols['white'], additional_message, db_symbols['white'])
     print('-' * 50)
 
 
@@ -69,7 +69,7 @@ def change_working_directory_routine():
     :return:
     """
     while True:
-        prompt_message('Please, input working directory:')
+        prompt_message('Please, input directory path:')
         working_directoty = str(input())
         try:
             os.chdir(working_directoty)
@@ -77,8 +77,6 @@ def change_working_directory_routine():
         except OSError:
             prompt_message('Wrong directory input', type_color='red')
             prompt_message('Please, try again:', type_color='yellow')
-
-    prompt_message('Work directory updated. New directory:', str(os.getcwd()), type_color='green')
 
 
 def is_pattern_complied(string: str, pattern) -> bool:
@@ -115,14 +113,13 @@ def date_input_routine() -> datetime.datetime:
     return datetime.datetime.strptime(answer, '%Y:%m:%d %H:%M:%S')
 
 
-def directory_inspection_routine() -> dict[str, str] | None:
+def directory_inspection_routine() -> dict[str, str]:
     """
-    Function (routine) look's-up through current working
+    Function (routine) goes through current working
     directory and searches ARW and JPG files, which are
     not named in accordance with pattern (YYYY_MM_DD_HH_MM_SS.EXT).
     Based on user's input - JPG files may or may not be included
-    into further processing list. As return gives dict{file_name: exif_date}.
-    If no applicable files are found - returns None.
+    into further processing list. If no applicable files are found - returns None.
     :return: dict | None
     """
 
@@ -151,7 +148,7 @@ def directory_inspection_routine() -> dict[str, str] | None:
                 elif file_name.lower().endswith('.jpg') and not is_pattern_complied(file_name, pattern):
                     list_jpg_files.append(pos)
 
-    # sequnce to merge or ignore JPG-files into final list based on user input
+    # sequnce to merge / ignore JPG-files into final list based on user input
     if len(list_jpg_files) > 0:
         prompt_message('JPG files detected', type_color='red')
         prompt_message('Do you wish to include JPG files into renaming process? Y / N',
@@ -208,13 +205,16 @@ def directory_inspection_routine() -> dict[str, str] | None:
 
 def renaming_recursive_function(filename: str, old_name: str, new_name: str, counter=0):
     """
-    Recursive function which is truing to rename a file nevertheless an OSError (such as "file exists" error)
+    Recursive function which is trying to rename a file nevertheless an OSError (such as "file exists" error)
+
+    If a file with new name not exists yet - it will be created by pattern style.
+    If a file with new name already present in the folder - it will try to use a name with suffix (1) (2) e.t.c.
 
     :param filename: Original name of a file
     :param old_name: Same as filename. In fact, function can be refactored not to use this param.
     :param new_name: New name of file, which is generated based on timedate.strptime method from EXIF tags.
     :param counter: recursive parameter, which translates downwards by recursive calls. +1, +2, e.t.c.
-    Used as an indicator of a copy of a file (number in brackets)
+            Used as an indicator of a copy of a file (number in brackets)
     :return: None
     """
 
@@ -237,6 +237,8 @@ def renaming_routine(dict_filename_and_exif_date: dict):
     :param dict_filename_and_exif_date: {file_name:str : datetime: datetime}
     :return: None
     """
+
+    # progress bar included
     for filename, exif_date in tqdm(dict_filename_and_exif_date.items()):
         old_name = filename
         new_name = datetime.datetime.strftime(exif_date, '%Y_%m_%d_%H_%M_%S') + old_name[-4:]
@@ -250,9 +252,11 @@ def scramble_routine():
     Warning! Picks ALL the files, not only .ARW and .JPG
     :return: None
     """
+
     with os.scandir(os.getcwd()) as it:
         for pos in tqdm(it):
-            if not pos.name.startswith('.') and pos.is_file():
+            if not pos.name.startswith('.') and pos.is_file() and (pos.name.lower().endswith('.arw') or
+                                                                   pos.name.lower().endswith('.jpg')):
                 new_name = ''.join([str(random.randint(0, 9)) for _ in range(15)]) + pos.name[-4:]
                 os.rename(pos.name, new_name)
         print()
@@ -261,7 +265,8 @@ def scramble_routine():
 def scramble_routine_entry_point():
     """
     Entry point to call scramble routine.
-    User confirmation applied.
+    User confirmation requested.
+    Not implemented in final build due to test-related activities.
     :return: None
     """
     prompt_message('???ARE YOU SURE???', type_color='red')
@@ -273,18 +278,27 @@ def scramble_routine_entry_point():
         prompt_message('scramlbe cancelled', type_color='green')
 
 
+def program_end_confirmation():
+    """
+    Simple routine to give a user bye-bye message with confirmation
+    Introduced with a goal to prevent commandline window to close in case
+     all the files are comple with pattern and no further actions needed.
+
+    :return: None
+    """
+    prompt_message('No further actions needed', 'Press enter to close the window', type_color='green')
+
+    if input():
+        pass
+
+
 def main():
     """
     Main routine to organize renaming process program.
-    In final product - scramble routine entry point is commented due to high risks of failure.
-    Such as renaming of a non .ARW and .JPG files
     :return: None
     """
     # update / change working directory
     change_working_directory_routine()
-
-    # QUITE DANGEROUS!
-    # scramble_routine_entry_point()
 
     # extract names of files applicable for renaming process (more on that in directory_inspection_routine docs)
     dict_filename_and_exif_date = directory_inspection_routine()
@@ -306,16 +320,16 @@ def main():
         # if confirmation recived - go to renaming procee
         if input() == 'y':
             renaming_routine(dict_filename_and_exif_date)
+            prompt_message('Renaming process complite', type_color='green')
         # if confirmation not recived - abort process, finish the programm
         else:
             prompt_message('Renaming process cancelled', type_color='yellow')
     # if applicable files are not found - finish the program
     else:
-        prompt_message('No files detected', type_color='green')
-
-    prompt_message('End of program', type_color='green')
+        prompt_message('No .ARW or .JPG files detected', type_color='green')
 
 
 if __name__ == "__main__":
     prompt_welcome_message()
     main()
+    program_end_confirmation()
