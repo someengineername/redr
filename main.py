@@ -7,7 +7,11 @@ from tqdm import tqdm
 from art import tprint
 
 
-def promt_welcome_message():
+def prompt_welcome_message():
+    """
+    Welcoming message at the start of the program
+    :return: None
+    """
     tprint('R E D R   Script')
     print('Raw Exif Date Renamer Script')
     # tprint('RENAMER')
@@ -25,26 +29,45 @@ def promt_welcome_message():
 
 
 def print_out_detected_files(db_filenames_dates: dict):
+    """
+    Printing dictionary with pair {file_name : datetime} in easy-view style.
+    :param db_filenames_dates: {file_name : datetime}
+    :return: None
+    """
     print(str('-' * 30 + ' ' + '-' * 30))
     print(str('File name:'.ljust(30) + ' ' + 'EXIF date:'))
     print(str('-' * 30 + ' ' + '-' * 30))
     for k, v in db_filenames_dates.items():
         print(k.ljust(30), ' ', v)
-    return None
 
 
-def prompt_message(message: str, additional_message=None, type_color='basic'):
+def prompt_message(message: str, additional_message: str = None, type_color='basic'):
+    """
+    Unified function to deal with different styles of messages.
+    Have 2 line of text with 1 semaphore-style lights on the head of the message.
+    Bottom line of a message will always be with white lights,
+    :param message: type == str. 1st line of a message. Will be covered by color lights on sides.
+    :param additional_message: type == str. 2nd line of a message. Will be covered by white light always.
+    :param type_color: type == str. Allowed input: ('red': '🔴', 'yellow': '🟡', 'green': '🟢').
+    If not specified - white color.
+    :return: None
+    """
     db_symbols = {'basic': '⚪', 'red': '🔴', 'yellow': '🟡', 'green': '🟢'}
 
+    picked_colour = db_symbols.get(type_color, 'basic')
+
     print('-' * 50)
-    print(db_symbols[type_color] * 3, message, db_symbols[type_color] * 3)
+    print(picked_colour * 3, message, picked_colour * 3)
     if additional_message:
         print(db_symbols['basic'], additional_message, db_symbols['basic'])
     print('-' * 50)
-    return None
 
 
 def change_working_directory_routine():
+    """
+    Simple routine to change working directory based on user's input.
+    :return:
+    """
     while True:
         prompt_message('Please, input working directory:')
         working_directoty = str(input())
@@ -56,10 +79,16 @@ def change_working_directory_routine():
             prompt_message('Please, try again:', type_color='yellow')
 
     prompt_message('Work directory updated. New directory:', str(os.getcwd()), type_color='green')
-    # prompt_message(str(os.getcwd()))
 
 
-def is_pattern_complied(string, pattern):
+def is_pattern_complied(string: str, pattern) -> bool:
+    """
+    Routine to check if string is comply with suggested regex pattern
+    :param string: String to pass a test
+    :param pattern: regex pattern r"...."
+    :return: bool
+    """
+
     if pattern.match(string):
         return True
     else:
@@ -67,6 +96,11 @@ def is_pattern_complied(string, pattern):
 
 
 def date_input_routine() -> datetime.datetime:
+    """
+    Routine to give user a possibility to enter the date of a file manually.
+    Can be applied in several cases such as: missing EXIF dates, conflit of a dates in EXIF date e.t.c.
+    :return: datetime
+    """
     prompt_message('Please enter valied date:', type_color='yellow')
 
     while True:
@@ -81,7 +115,7 @@ def date_input_routine() -> datetime.datetime:
     return datetime.datetime.strptime(answer, '%Y:%m:%d %H:%M:%S')
 
 
-def directory_inspection_routine() -> dict[str, str]:
+def directory_inspection_routine() -> dict[str, str] | None:
     """
     Function (routine) look's-up through current working
     directory and searches ARW and JPG files, which are
@@ -89,7 +123,7 @@ def directory_inspection_routine() -> dict[str, str]:
     Based on user's input - JPG files may or may not be included
     into further processing list. As return gives dict{file_name: exif_date}.
     If no applicable files are found - returns None.
-    :return:
+    :return: dict | None
     """
 
     result = dict()
@@ -138,13 +172,13 @@ def directory_inspection_routine() -> dict[str, str]:
         for filename in tqdm(list_all_files, colour='MAGENTA'):
 
             with open(filename.name, 'rb') as photo_file:
-                # TODO
-                # apply exception handling - missing EXIF tags and so on
 
-                # extracting EXIF tags
-                exif_tags_extracted = {k: v for k, v in exifreader.process_file(photo_file).items() if
-                                       k in ['Image DateTime', 'Thumbnail DateTime', 'EXIF DateTimeOriginal',
-                                             'EXIF DateTimeDigitized']}
+                try:
+                    exif_tags_extracted = {k: v for k, v in exifreader.process_file(photo_file).items() if
+                                           k in ['Image DateTime', 'Thumbnail DateTime', 'EXIF DateTimeOriginal',
+                                                 'EXIF DateTimeDigitized']}
+                except KeyError:
+                    exif_tags_extracted = dict()
 
                 # check if tags even presented:
                 if exif_tags_extracted:
@@ -172,7 +206,18 @@ def directory_inspection_routine() -> dict[str, str]:
     return result
 
 
-def renaming_recursive_function(filename, old_name, new_name, counter=0):
+def renaming_recursive_function(filename: str, old_name: str, new_name: str, counter=0):
+    """
+    Recursive function which is truing to rename a file nevertheless an OSError (such as "file exists" error)
+
+    :param filename: Original name of a file
+    :param old_name: Same as filename. In fact, function can be refactored not to use this param.
+    :param new_name: New name of file, which is generated based on timedate.strptime method from EXIF tags.
+    :param counter: recursive parameter, which translates downwards by recursive calls. +1, +2, e.t.c.
+    Used as an indicator of a copy of a file (number in brackets)
+    :return: None
+    """
+
     counter += 1
     try:
         os.rename(old_name, new_name)
@@ -185,15 +230,26 @@ def renaming_recursive_function(filename, old_name, new_name, counter=0):
         renaming_recursive_function(filename, old_name, modified_name, counter)
 
 
-def renaming_rouitne(dict_filename_and_exif_date: dict):
+def renaming_routine(dict_filename_and_exif_date: dict):
+    """
+    Main routine for renaming process.
+    Goes through the dict, prepared before and calling for recursive function of renaming.
+    :param dict_filename_and_exif_date: {file_name:str : datetime: datetime}
+    :return: None
+    """
     for filename, exif_date in tqdm(dict_filename_and_exif_date.items()):
         old_name = filename
         new_name = datetime.datetime.strftime(exif_date, '%Y_%m_%d_%H_%M_%S') + old_name[-4:]
-
         renaming_recursive_function(filename, old_name, new_name)
 
 
 def scramble_routine():
+    """
+    Routine, used in development to scramble all the names of all files in directory.
+    Simply goes through a directory and gives XXXXXXXXXXXXXXXX.YYY name, where X - [0...9], .YYY - extension of a file
+    Warning! Picks ALL the files, not only .ARW and .JPG
+    :return: None
+    """
     with os.scandir(os.getcwd()) as it:
         for pos in tqdm(it):
             if not pos.name.startswith('.') and pos.is_file():
@@ -203,6 +259,11 @@ def scramble_routine():
 
 
 def scramble_routine_entry_point():
+    """
+    Entry point to call scramble routine.
+    User confirmation applied.
+    :return: None
+    """
     prompt_message('???ARE YOU SURE???', type_color='red')
     prompt_message('!!!FAILURE CAN BE!!!', type_color='red')
 
@@ -213,11 +274,17 @@ def scramble_routine_entry_point():
 
 
 def main():
+    """
+    Main routine to organize renaming process program.
+    In final product - scramble routine entry point is commented due to high risks of failure.
+    Such as renaming of a non .ARW and .JPG files
+    :return: None
+    """
     # update / change working directory
     change_working_directory_routine()
 
     # QUITE DANGEROUS!
-    scramble_routine_entry_point()
+    # scramble_routine_entry_point()
 
     # extract names of files applicable for renaming process (more on that in directory_inspection_routine docs)
     dict_filename_and_exif_date = directory_inspection_routine()
@@ -238,7 +305,7 @@ def main():
 
         # if confirmation recived - go to renaming procee
         if input() == 'y':
-            renaming_rouitne(dict_filename_and_exif_date)
+            renaming_routine(dict_filename_and_exif_date)
         # if confirmation not recived - abort process, finish the programm
         else:
             prompt_message('Renaming process cancelled', type_color='yellow')
@@ -250,5 +317,5 @@ def main():
 
 
 if __name__ == "__main__":
-    promt_welcome_message()
+    prompt_welcome_message()
     main()
